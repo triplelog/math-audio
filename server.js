@@ -3,6 +3,7 @@ const nunjucks = require('nunjucks')
 const http = require('http');
 const { Server } = require("socket.io");
 const { SynthesizeSpeechCommand, StartSpeechSynthesisTaskCommand } = require("@aws-sdk/client-polly");
+const { Readable } = require('stream');
 const { pollyClient } = require("./libs/pollyClient.js");
 const fs = require('fs');
 const app = express()
@@ -33,7 +34,19 @@ const run = async (input,socket) => {
 		SampleRate: "22050",
 		Engine: "neural"
   	};
+	var paramsMarks = {
+		OutputFormat: "json",
+		OutputS3BucketName: "math-audio",
+		Text: input,
+		TextType: "text",
+		VoiceId: "Matthew",
+		SampleRate: "22050",
+		Engine: "neural",
+		SpeechMarkTypes: ["word"]
+	};
   	try {
+		var bothDone = 0;
+		var jsonMessage = {};
 		var result = await pollyClient.send(new SynthesizeSpeechCommand(params));
 		//console.log("Success, audio file added to " + params.OutputS3BucketName);
 		//var id = result.SynthesisTask.TaskId;
@@ -41,15 +54,33 @@ const run = async (input,socket) => {
 		var ws = fs.createWriteStream('./audio/output2.mp3');
 		result.AudioStream.pipe(ws);
 		ws.on('finish', function() {
-			console.log('output2');
-			socket.emit('done','output2');
+			bothDone++;
+			if (bothDone > 1){
+				socket.emit('done',jsonMessage);
+			}
 		})
-		/*
+		
 		var result2 = await pollyClient.send(new SynthesizeSpeechCommand(paramsMarks));
 		//var rs = fs.createReadStream();
-		var ws = fs.createWriteStream('./marks/output.json');
-		result2.AudioStream.pipe(ws);*/
-		console.log("Done");
+		const readable = Readable.from(result2.AudioStream, {encoding: 'utf8'});
+
+		var timings = "[";
+		readable.on('data', function(chunk) {
+			timings += chunk+"\n";
+		})
+		readable.on('end', function() {
+			timings = timings.trim()+"]";
+			var jsonOut = timings.replace(/\n+/g,",");
+			jsonMessage = {'name':'output2',timings:JSON.parse(jsonOut)};
+			bothDone++;
+			if (bothDone > 1){
+				socket.emit('done',jsonMessage);
+			}
+			
+		})
+		//var ws = fs.createWriteStream('./marks/output.json');
+		//result2.AudioStream.pipe(ws);
+		//console.log("Done");
   	}
 	catch (err) {
     	console.log("Error putting object", err);

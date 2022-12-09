@@ -1,3 +1,101 @@
+var katexDiv = document.getElementById('result');
+var timings = [
+    {
+        "time": 24,
+        "type": "word",
+        "start": 0,
+        "end": 1,
+        "value": "1"
+    },
+    {
+        "time": 287,
+        "type": "word",
+        "start": 2,
+        "end": 6,
+        "value": "plus"
+    },
+    {
+        "time": 587,
+        "type": "word",
+        "start": 7,
+        "end": 8,
+        "value": "2"
+    },
+    {
+        "time": 762,
+        "type": "word",
+        "start": 9,
+        "end": 13,
+        "value": "plus"
+    },
+    {
+        "time": 1087,
+        "type": "word",
+        "start": 14,
+        "end": 15,
+        "value": "3"
+    },
+    {
+        "time": 1300,
+        "type": "word",
+        "start": 16,
+        "end": 21,
+        "value": "times"
+    },
+    {
+        "time": 1700,
+        "type": "word",
+        "start": 22,
+        "end": 24,
+        "value": "51"
+    },
+    {
+        "time": 2249,
+        "type": "word",
+        "start": 25,
+        "end": 30,
+        "value": "minus"
+    },
+    {
+        "time": 2624,
+        "type": "word",
+        "start": 31,
+        "end": 32,
+        "value": "4"
+    },
+    {
+        "time": 2874,
+        "type": "word",
+        "start": 33,
+        "end": 35,
+        "value": "to"
+    },
+    {
+        "time": 2974,
+        "type": "word",
+        "start": 36,
+        "end": 39,
+        "value": "the"
+    },
+    {
+        "time": 3062,
+        "type": "word",
+        "start": 40,
+        "end": 45,
+        "value": "power"
+    },
+    {
+        "time": 3387,
+        "type": "word",
+        "start": 46,
+        "end": 47,
+        "value": "2"
+    }
+];
+var idMap = {};
+var idTimings = {};
+var audioEl = document.getElementById('audioPlayback');
+
 function mathToAudio(){
 	var input = document.getElementById('textEntry').value;
 	var cleaned = clean(input);
@@ -9,7 +107,7 @@ function mathToAudio(){
     audio = audio.replace(/\s+/g," ");
     audio = audio.replace(/}\s+/g,"}");
     console.log(audio);
-    var idMap = {};
+    idMap = {};
     var idLoc = -1;
     for (var i=0;i<audio.length;i++){
         if (audio[i] == "{"){
@@ -27,14 +125,59 @@ function mathToAudio(){
     console.log(idMap);
     var latex = toKatex(postfixed);
     console.log(latex);
-    katex.render(latex, document.getElementById('result'), {
+    katex.render(latex, katexDiv, {
         throwOnError: false,
         trust: true,
         strict: "ignore"
     });
-    var div = document.getElementById('result');
-    console.log(div.querySelector('#id-1'));
+    for (var id in idMap){
+        var el = katexDiv.querySelector('#id-'+id);
+        if (el){
+            el.style.opacity = "0.5";
+        }
+    }
 	//socket.emit('toAudio',audio);
+    var audio = document.getElementById('audioSource');
+    audio.src = "audio/output2.mp3";
+    audioEl.load();
+}
+
+function showKatex(id){
+    var el = katexDiv.querySelector('#id-'+id);
+    if (el){
+        el.style.opacity = "1";
+    }
+}
+
+function updateAudioTime(time){
+    var ms = time*1000;
+    for (var id in idTimings){
+        if (idTimings[id] < ms + 100){
+            showKatex(id);
+            delete idTimings[id];
+        }
+    }
+}
+function playKatex(){
+    idTimings = {};
+    audioEl.currentTime = 0;
+    for (var id in idMap){
+        for (var i=timings.length-1;i>=0;i--){
+            if (idMap[id] >= timings[i].start){
+                var pctDone = 0;
+                if ((idMap[id] > timings[i].start) && (timings[i].end > timings[i].start)){
+                    pctDone = (idMap[id] - timings[i].start)/(timings[i].end - timings[i].start);
+                }
+                var nextTime = timings[i].time;
+                if (i < timings.length-1){
+                    nextTime = timings[i+1].time;
+                }
+                idTimings[id]=timings[i].time*(1-pctDone)+nextTime*pctDone;
+                break;
+            }
+        }
+    }
+    audioEl.play();
 }
 
 var socket = io();
@@ -43,8 +186,9 @@ socket.on('connect', (msg) => {
 socket.on('done', (msg) => {
 	console.log(msg);
     var audio = document.getElementById('audioSource');
-    audio.src = "audio/"+msg+".mp3";
+    audio.src = "audio/"+msg.name+".mp3";
     document.getElementById('audioPlayback').load();
+    timings = msg.timings;
 });
 
 function toAudio(postfixList) {
