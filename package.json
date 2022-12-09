@@ -7,7 +7,10 @@
 	"dependencies": {
 	  "@aws-sdk/client-polly": "^3.32.0",
 	  "@aws-sdk/node-http-handler": "^3.32.0",
-	  "@aws-sdk/types": "^3.32.0"
+	  "@aws-sdk/types": "^3.32.0",
+	  "nunjucks": "*",
+	  "express": "*",
+	  "socket.io": "*"
 	},
 	"devDependencies": {
 	  "@aws-sdk/types": "^3.32.0",
