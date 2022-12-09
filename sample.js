@@ -24,14 +24,14 @@ import { s3Client } from "./libs/s3Client.js";
 
 // Set the parameters
 const params = {
-  Bucket: "ma_bucket", // The name of the bucket. For example, 'sample_bucket_101'.
+  Bucket: "math-audio", // The name of the bucket. For example, 'sample_bucket_101'.
   Key: "file1", // The name of the object. For example, 'sample_upload.txt'.
   Body: "Hello World!", // The content of the object. For example, 'Hello world!".
 };
 
 const run = async () => {
   // Create an Amazon S3 bucket.
-  try {
+  /*try {
     const data = await s3Client.send(
         new CreateBucketCommand({ Bucket: params.Bucket })
     );
@@ -40,7 +40,7 @@ const run = async () => {
     return data; // For unit tests.
   } catch (err) {
     console.log("Error", err);
-  }
+  }*/
   // Create an object and upload it to the Amazon S3 bucket.
   try {
     const results = await s3Client.send(new PutObjectCommand(params));
