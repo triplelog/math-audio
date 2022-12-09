@@ -5,6 +5,7 @@ function mathToAudio(){
 	console.log(postfixed);
 	var audio = toAudio(postfixed);
 	//TODO: remove consecutive spaces
+    audio = audio.replace(/\s+/g," ");
 	console.log(audio);
 	socket.emit('toAudio',audio);
 }
@@ -14,6 +15,9 @@ socket.on('connect', (msg) => {
 });
 socket.on('done', (msg) => {
 	console.log(msg);
+    var audio = document.getElementById('audioSource');
+    audio.src = "audio/"+msg+".mp3";
+    document.getElementById('audioPlayback').load();
 });
 
 function toAudio(postfixList) {
@@ -89,6 +93,12 @@ toAudioOp["*"] = function(stack, stackIndex, op){
 }
 toAudioOp["+"] = function(stack, stackIndex, op){
 	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" plus "+stack[stackIndex - 1].exp;
+	stack[stackIndex - 2].op = op;
+	stackIndex--;
+	return [stack, stackIndex];
+}
+toAudioOp["-"] = function(stack, stackIndex, op){
+	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" minus "+stack[stackIndex - 1].exp;
 	stack[stackIndex - 2].op = op;
 	stackIndex--;
 	return [stack, stackIndex];
