@@ -17,8 +17,9 @@ Running the code:
 node polly_synthesize_to_s3.js
 */
 // snippet-start:[Polly.JavaScript.general-examples.synthesizetos3_V3]
-const { StartSpeechSynthesisTaskCommand } = require("@aws-sdk/client-polly");
+const { SynthesizeSpeechCommand, StartSpeechSynthesisTaskCommand } = require("@aws-sdk/client-polly");
 const { pollyClient } = require("./libs/pollyClient.js");
+const fs = require('fs');
 
 // Create the parameters
 var params = {
@@ -30,11 +31,30 @@ var params = {
   SampleRate: "22050",
   Engine: "neural"
 };
+var paramsMarks = {
+	OutputFormat: "json",
+	OutputS3BucketName: "math-audio",
+	Text: "The derivative of cosine is negative sine",
+	TextType: "text",
+	VoiceId: "Matthew",
+	SampleRate: "22050",
+	Engine: "neural",
+	SpeechMarkTypes: ["word"]
+  };
 
 const run = async () => {
   try {
-    await pollyClient.send(new StartSpeechSynthesisTaskCommand(params));
-    console.log("Success, audio file added to " + params.OutputS3BucketName);
+    var result = await pollyClient.send(new SynthesizeSpeechCommand(params));
+    //console.log("Success, audio file added to " + params.OutputS3BucketName);
+	//var id = result.SynthesisTask.TaskId;
+	//console.log(id);
+	var ws = fs.createWriteStream('./output.mp3');
+	result.AudioStream.pipe(ws);
+	var result2 = await pollyClient.send(new SynthesizeSpeechCommand(paramsMarks));
+	//var rs = fs.createReadStream();
+	var ws = fs.createWriteStream('./output.json');
+	result2.AudioStream.pipe(ws);
+	console.log("Done");
   } catch (err) {
     console.log("Error putting object", err);
   }
