@@ -101,9 +101,9 @@ function mathToAudio(){
 	var cleaned = clean(input);
 	var postfixed = postfixify(cleaned);
 	console.log(postfixed);
-	var audio = toAudio(postfixed);
+	var audioObj = toAudio(postfixed);
 	//TODO: remove consecutive spaces
-    audio = audio.trim();
+    audio = audioObj.audio.trim();
     audio = audio.replace(/\s+/g," ");
     audio = audio.replace(/}\s+/g,"}");
     console.log(audio);
@@ -123,7 +123,7 @@ function mathToAudio(){
     }
 	console.log(audio);
     console.log(idMap);
-    var latex = toKatex(postfixed);
+    var latex = audioObj.katex;
     console.log(latex);
     katex.render(latex, katexDiv, {
         throwOnError: false,
@@ -143,6 +143,7 @@ function mathToAudio(){
 }
 
 function showKatex(id){
+    console.log(id);
     var el = katexDiv.querySelector('#id-'+id);
     if (el){
         el.style.opacity = "1";
@@ -162,6 +163,10 @@ function playKatex(){
     idTimings = {};
     audioEl.currentTime = 0;
     for (var id in idMap){
+        var el = katexDiv.querySelector('#id-'+id);
+        if (el){
+            el.style.opacity = "0.5";
+        }
         for (var i=timings.length-1;i>=0;i--){
             if (idMap[id] >= timings[i].start){
                 var pctDone = 0;
@@ -198,6 +203,7 @@ function toAudio(postfixList) {
     var currentId = 0;
     for (var i = 0; i < postfixList.length; i++) {
         var c = postfixList[i];
+        var k = postfixList[i];
         if (prec[c]) {
             var fn = toAudioOp[c];
             if (fn) {
@@ -207,7 +213,9 @@ function toAudio(postfixList) {
                 currentId = result[2];
             } else {
                 var lastPrec = prec[stack[stackIndex - 1].op];
-                stack[stackIndex - 1].exp = " {"+currentId+"}"+c + " of " + stack[stackIndex - 1].exp + " ";
+                stack[stackIndex - 1].audio = " {"+currentId+"}"+c + " of " + stack[stackIndex - 1].audio + " ";
+                stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c + "(" + stack[stackIndex - 1].katex + ")}";
+                stack[stackIndex - 1].pf.push(c);
                 stack[stackIndex - 1].op = c;
                 currentId++;
             }
@@ -220,16 +228,29 @@ function toAudio(postfixList) {
                 currentId = result[2];
             } else {
                 if (c.length > 1 && c[1] == ":") {
-                    stack[stackIndex - 1].exp = " {"+currentId+"}" + c.replace("\\:", "") + " of " + stack[stackIndex - 1].exp + " ";
+                    stack[stackIndex - 1].audio = " {"+currentId+"}" + c.replace("\\:", "") + " of " + stack[stackIndex - 1].audio + " ";
+                    stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c.replace("\\:", "") + "(" + stack[stackIndex - 1].katex + ")}";
+                    stack[stackIndex - 1].pf.push(c.replace("\\:", ""));
                     stack[stackIndex - 1].op = '#';
                     currentId++;
                 } else {
                     if (toAudioExp[c]) {
                         c = " {"+currentId+"}"+toAudioExp[c]+" ";
-                        currentId++;
                     }
+                    else {
+                        c = " {"+currentId+"}"+c+" ";
+                    }
+                    if (toLatexExp[c]) {
+                        k = "\\htmlId{id-"+currentId+"}{"+toLatexExp[k]+"}";
+                    }
+                    else {
+                        k = "\\htmlId{id-"+currentId+"}{"+k+"}";
+                    }
+                    currentId++;
                     stack[stackIndex] = {
-                        "exp": c,
+                        "audio": c,
+                        "katex": k,
+                        "pf": [postfixList[i]],
                         "op": '#'
                     };
                     stackIndex++;
@@ -239,179 +260,31 @@ function toAudio(postfixList) {
         } else {
             if (toAudioExp[c]) {
                 c = " {"+currentId+"}"+toAudioExp[c]+" ";
-                currentId++;
-            } else if (isNumber(c)) {
+            }
+            else if (isNumber(c)) {
                 c = " {"+currentId+"}"+toNumberAudio(c)+" ";
-                currentId++;
             }
+            else {
+                c = " {"+currentId+"}"+c+" ";
+            }
+            if (toLatexExp[c]) {
+                k = "\\htmlId{id-"+currentId+"}{"+toLatexExp[k]+"}";
+            }
+            else if (isNumber(c)) {
+                k = "\\htmlId{id-"+currentId+"}{"+k+"}";
+            }
+            else {
+                k = "\\htmlId{id-"+currentId+"}{"+k+"}";
+            }
+            currentId++;
             stack[stackIndex] = {
-                "exp": c,
+                "audio": c,
+                "katex": k,
+                "pf": [postfixList[i]],
                 "op": '#'
             };
             stackIndex++;
         }
     }
-    return stack[0].exp;
+    return {audio:stack[0].audio,katex:stack[0].katex};
 }
-
-function toNumberAudio(input){
-	return " " + input + " ";
-}
-
-var toAudioOp = {};
-toAudioOp["~"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-1].exp = " {"+currentId+"}negative one times "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 1].op = op;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toAudioOp["*"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" {"+currentId+"}times "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toAudioOp["+"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" {"+currentId+"}plus "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toAudioOp["-"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" {"+currentId+"}minus "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toAudioOp["/"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" {"+currentId+"}divided by "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toAudioOp["^"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = stack[stackIndex - 2].exp+" {"+currentId+"}to the power "+stack[stackIndex - 1].exp;
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-
-var toAudioExp = {};
-
-
-
-
-
-
-function toKatex(postfixList) {
-
-    var stack = [];
-    var stackIndex = 0;
-    var currentId = 0;
-    for (var i = 0; i < postfixList.length; i++) {
-        var c = postfixList[i];
-        if (prec[c]) {
-            var fn = toKatexOp[c];
-            if (fn) {
-                var result = fn(stack, stackIndex, c, currentId);
-                stack = result[0];
-                stackIndex = result[1];
-                currentId = result[2];
-            } else {
-                var lastPrec = prec[stack[stackIndex - 1].op];
-                stack[stackIndex - 1].exp = " \\htmlId{id-"+currentId+"}{"+c + "(" + stack[stackIndex - 1].exp + ")}";
-                stack[stackIndex - 1].op = c;
-                currentId++;
-            }
-        } else if (c[0] == "\\") {
-            var fn = toKatexOp[c.substring(1)];
-            if (fn) {
-                var result = fn(stack, stackIndex, c, currentId);
-                stack = result[0];
-                stackIndex = result[1];
-                currentId = result[2];
-            } else {
-                if (c.length > 1 && c[1] == ":") {
-                    stack[stackIndex - 1].exp = " \\htmlId{id-"+currentId+"}{" + c.replace("\\:", "") + "(" + stack[stackIndex - 1].exp + ")}";
-                    stack[stackIndex - 1].op = '#';
-                    currentId++;
-                } else {
-                    if (toKatexExp[c]) {
-                        c = " \\htmlId{id-"+currentId+"}{"+toKatexExp[c]+"} ";
-                        currentId++;
-                    }
-                    stack[stackIndex] = {
-                        "exp": c,
-                        "op": '#'
-                    };
-                    stackIndex++;
-                }
-
-            }
-        } else {
-            if (toKatexExp[c]) {
-                c = " \\htmlId{id-"+currentId+"}{"+toKatexExp[c]+"} ";
-                currentId++;
-            } else if (isNumber(c)) {
-                c = " \\htmlId{id-"+currentId+"}{"+toNumberAudio(c)+"} ";
-                currentId++;
-            }
-            stack[stackIndex] = {
-                "exp": c,
-                "op": '#'
-            };
-            stackIndex++;
-        }
-    }
-    return stack[0].exp;
-}
-
-var toKatexOp = {};
-toKatexOp["~"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-1].exp = " \\htmlId{id-"+currentId+"}{-1*("+stack[stackIndex - 1].exp+")}";
-	stack[stackIndex - 1].op = op;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toKatexOp["*"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = "("+stack[stackIndex - 2].exp+")\\htmlId{id-"+currentId+"}{\\cdot}("+stack[stackIndex - 1].exp+")";
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toKatexOp["+"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = "("+stack[stackIndex - 2].exp+")\\htmlId{id-"+currentId+"}{+}("+stack[stackIndex - 1].exp+")";
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toKatexOp["-"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = "("+stack[stackIndex - 2].exp+")\\htmlId{id-"+currentId+"}{-}("+stack[stackIndex - 1].exp+")";
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toKatexOp["/"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = "\\frac{"+stack[stackIndex - 2].exp+"}{\\htmlId{id-"+currentId+"}{"+stack[stackIndex - 1].exp+"}}";
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-toKatexOp["^"] = function(stack, stackIndex, op, currentId){
-	stack[stackIndex-2].exp = "("+stack[stackIndex - 2].exp+")\\htmlId{id-"+currentId+"}{^{"+stack[stackIndex - 1].exp+"}}";
-	stack[stackIndex - 2].op = op;
-	stackIndex--;
-    currentId++;
-	return [stack, stackIndex,currentId];
-}
-
-var toKatexExp = {};
