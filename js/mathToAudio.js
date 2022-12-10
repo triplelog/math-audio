@@ -131,29 +131,29 @@ function mathToAudio(){
         strict: "ignore"
     });
     for (var id in idMap){
-        var el = katexDiv.querySelector('#id-'+id);
-        if (el){
-            el.style.opacity = "0.5";
+        var els = katexDiv.querySelectorAll('#id-'+id);
+        if (els){
+            els.forEach((el) => {el.style.opacity = "0.5"});
         }
     }
-	//socket.emit('toAudio',audio);
-    var audio = document.getElementById('audioSource');
+	socket.emit('toAudio',audio);
+    /*var audio = document.getElementById('audioSource');
     audio.src = "audio/output2.mp3";
-    audioEl.load();
+    audioEl.load();*/
 }
 
 function showKatex(id){
     console.log(id);
-    var el = katexDiv.querySelector('#id-'+id);
-    if (el){
-        el.style.opacity = "1";
+    var els = katexDiv.querySelectorAll('#id-'+id);
+    if (els){
+        els.forEach((el) => {el.style.opacity = "1"});
     }
 }
 
 function updateAudioTime(time){
     var ms = time*1000;
     for (var id in idTimings){
-        if (idTimings[id] < ms + 100){
+        if (idTimings[id] < ms + 50){
             showKatex(id);
             delete idTimings[id];
         }
@@ -163,9 +163,9 @@ function playKatex(){
     idTimings = {};
     audioEl.currentTime = 0;
     for (var id in idMap){
-        var el = katexDiv.querySelector('#id-'+id);
-        if (el){
-            el.style.opacity = "0.5";
+        var els = katexDiv.querySelectorAll('#id-'+id);
+        if (els){
+            els.forEach((el) => {el.style.opacity = "0.5"});
         }
         for (var i=timings.length-1;i>=0;i--){
             if (idMap[id] >= timings[i].start){
@@ -214,9 +214,10 @@ function toAudio(postfixList) {
             } else {
                 var lastPrec = prec[stack[stackIndex - 1].op];
                 stack[stackIndex - 1].audio = " {"+currentId+"}"+c + " of " + stack[stackIndex - 1].audio + " ";
-                stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c + "(" + stack[stackIndex - 1].katex + ")}";
+                stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c + "\\left(" + stack[stackIndex - 1].katex + "\\right)}";
                 stack[stackIndex - 1].pf.push(c);
                 stack[stackIndex - 1].op = c;
+                stack[stackIndex - 1].lci = currentId;
                 currentId++;
             }
         } else if (c[0] == "\\") {
@@ -229,9 +230,10 @@ function toAudio(postfixList) {
             } else {
                 if (c.length > 1 && c[1] == ":") {
                     stack[stackIndex - 1].audio = " {"+currentId+"}" + c.replace("\\:", "") + " of " + stack[stackIndex - 1].audio + " ";
-                    stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c.replace("\\:", "") + "(" + stack[stackIndex - 1].katex + ")}";
+                    stack[stackIndex - 1].katex = " \\htmlId{id-"+currentId+"}{"+c.replace("\\:", "") + "\\left(" + stack[stackIndex - 1].katex + "\\right)}";
                     stack[stackIndex - 1].pf.push(c.replace("\\:", ""));
                     stack[stackIndex - 1].op = '#';
+                    stack[stackIndex - 1].lci = currentId;
                     currentId++;
                 } else {
                     if (toAudioExp[c]) {
@@ -246,13 +248,15 @@ function toAudio(postfixList) {
                     else {
                         k = "\\htmlId{id-"+currentId+"}{"+k+"}";
                     }
-                    currentId++;
+                    
                     stack[stackIndex] = {
                         "audio": c,
                         "katex": k,
                         "pf": [postfixList[i]],
-                        "op": '#'
+                        "op": '#',
+                        "lci": currentId
                     };
+                    currentId++;
                     stackIndex++;
                 }
 
@@ -276,13 +280,15 @@ function toAudio(postfixList) {
             else {
                 k = "\\htmlId{id-"+currentId+"}{"+k+"}";
             }
-            currentId++;
+            
             stack[stackIndex] = {
                 "audio": c,
                 "katex": k,
                 "pf": [postfixList[i]],
-                "op": '#'
+                "op": '#',
+                "lci": currentId
             };
+            currentId++;
             stackIndex++;
         }
     }
