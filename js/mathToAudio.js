@@ -136,10 +136,10 @@ function mathToAudio(){
             els.forEach((el) => {el.style.opacity = "0.5"});
         }
     }
-	socket.emit('toAudio',audio);
-    /*var audio = document.getElementById('audioSource');
+	//socket.emit('toAudio',audio);
+    var audio = document.getElementById('audioSource');
     audio.src = "audio/output2.mp3";
-    audioEl.load();*/
+    audioEl.load();
 }
 
 function showKatex(id){
