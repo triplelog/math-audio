@@ -133,7 +133,7 @@ function mathToAudio(){
     for (var id in idMap){
         var els = katexDiv.querySelectorAll('#id-'+id);
         if (els){
-            els.forEach((el) => {el.style.opacity = "0.5"});
+            els.forEach((el) => {el.style.color = "#EEE"});
         }
     }
 	socket.emit('toAudio',audio);
@@ -146,7 +146,7 @@ function showKatex(id){
     console.log(id);
     var els = katexDiv.querySelectorAll('#id-'+id);
     if (els){
-        els.forEach((el) => {el.style.opacity = "1"});
+        els.forEach((el) => {el.style.color = "#000"});
     }
 }
 
@@ -165,7 +165,7 @@ function playKatex(){
     for (var id in idMap){
         var els = katexDiv.querySelectorAll('#id-'+id);
         if (els){
-            els.forEach((el) => {el.style.opacity = "0.5"});
+            els.forEach((el) => {el.style.color = "#EEE"});
         }
         for (var i=timings.length-1;i>=0;i--){
             if (idMap[id] >= timings[i].start){

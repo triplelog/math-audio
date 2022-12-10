@@ -316,7 +316,7 @@ for (var i in comps) {
 		stack[stackIndex - 2].lci = currentId;
 		stackIndex--;
     	currentId++;
-        return [stack, stackIndex, currentIndex];
+        return [stack, stackIndex, currentId];
     }
 }
 var trig = ['sin', 'cos', 'tan', 'csc', 'sec', 'cot', 'sinh', 'cosh', 'tanh'];
@@ -432,6 +432,167 @@ toAudioOp['int'] = function(stack, stackIndex, op,currentId) {
     return [stack, stackIndex,currentId];
 }
 
+var spfns = ['sum', 'prod'];
+for (var i = 0; i < spfns.length; i++) {
+    toAudioOp[spfns[i]] = function(stack, stackIndex, op,currentId) {
+		var opAudio = " the sum ";
+		if (op = "prod"){
+			opAudio = " the product ";
+		}
+        if (stack[stackIndex - 1].op == ",") {
+            var split = stack[stackIndex - 1].katex.split(",");
+			var splita = stack[stackIndex - 1].audio.split(",");
+            if (split.length == 3) {
+                stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + "_{" + split[1] + "}^{" + split[2] + "} {" + split[0] + "}}";
+				stack[stackIndex - 1].audio = " {"+currentId+"}" + opAudio + " from " + splita[1] + " to " + splita[2] + " of " + splita[0] + " ";
+
+			}
+			else if (split.length == 2) {
+				stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + "_{" + split[1] + "} {" + split[0] + "}}";
+				stack[stackIndex - 1].audio = " {"+currentId+"}" + opAudio + " over " + splita[1] + " of " + splita[0] + " ";
+            }
+			else {
+				stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + " {" + stack[stackIndex - 1].katex + "}}";
+				stack[stackIndex - 1].audio = " {"+currentId+"}" + opAudio + " of " + stack[stackIndex - 1].audio + " ";
+            }
+        }
+		else {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + " {" + stack[stackIndex - 1].katex + "}}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}" + opAudio + " of " + stack[stackIndex - 1].audio + " ";
+        }
+        stack[stackIndex - 1].op = op;
+		stack[stackIndex-1].pf.push(op);
+		stack[stackIndex - 1].lci = currentId;
+		currentId++;
+        return [stack, stackIndex,currentId];
+    }
+}
+toAudioOp['lim'] = function(stack, stackIndex, op,currentId) {
+    if (stack[stackIndex - 1].op == ",") {
+        var split = stack[stackIndex - 1].katex.split(",");
+		var splita = stack[stackIndex - 1].audio.split(",");
+        if (split.length == 4) {
+            if (split[3].length > 0 && split[3].toLowerCase().indexOf('rig') >= 0) {
+                stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim\\limits_{" + split[1] + "\\to " + split[2] + "^+}{" + split[0] + "}}";
+				stack[stackIndex - 1].audio = "{"+currentId+"}the limit as " + splita[1] + " approaches " + splita[2] + " from the right of " + splita[0] + " ";
+            }
+			else if (split[3].length > 0 && split[3].toLowerCase().indexOf('lef') >= 0) {
+				stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim\\limits_{" + split[1] + "\\to " + split[2] + "^-}{" + split[0] + "}}";
+				stack[stackIndex - 1].audio = "{"+currentId+"}the limit as " + splita[1] + " approaches " + splita[2] + " from the left of " + splita[0] + " ";
+            }
+			else {
+				stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim\\limits_{" + split[1] + "\\to " + split[2] + "^-}{" + split[0] + "}}";
+				stack[stackIndex - 1].audio = "{"+currentId+"}the limit as " + splita[1] + " approaches " + splita[2] + " of " + splita[0] + " ";
+            }
+
+        }
+		else if (split.length == 3) {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim\\limits_{" + split[1] + "\\to " + split[2] + "^-}{" + split[0] + "}}";
+			stack[stackIndex - 1].audio = "{"+currentId+"}the limit as " + splita[1] + " approaches " + splita[2] + " of " + splita[0] + " ";
+
+        }
+		else {
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim{" + stack[stackIndex-1].katex + "}}";
+			stack[stackIndex - 1].audio = "{"+currentId+"}the limit of " + stack[stackIndex-1].audio + " ";
+
+        }
+    }
+	else {
+        stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\lim{" + stack[stackIndex-1].katex + "}}";
+		stack[stackIndex - 1].audio = "{"+currentId+"}the limit of " + stack[stackIndex-1].audio + " ";
+    }
+    stack[stackIndex - 1].op = op;
+	stack[stackIndex-1].pf.push(op);
+	stack[stackIndex - 1].lci = currentId;
+	currentId++;
+    return [stack, stackIndex,currentId];
+}
+
+toAudioOp['mod'] = function(stack, stackIndex, op,currentId) {
+    if (stack[stackIndex - 1].op == ",") {
+        stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\mod(" + stack[stackIndex - 1].katex.replace(/,/g, ", ") + ")}";
+        stack[stackIndex - 1].audio = stack[stackIndex - 1].katex.replace(/,/g, " {"+currentId+"}modulo ") + " ";
+		stack[stackIndex - 1].op = op;
+		stack[stackIndex-1].pf.push(op);
+		stack[stackIndex - 1].lci = currentId;
+    } else {
+        stack[stackIndex - 2].katex = stack[stackIndex - 2].katex + "\\htmlId{id-"+currentId+"}{\\mod " + stack[stackIndex - 1].katex+"}";
+		stack[stackIndex - 2].audio = stack[stackIndex - 2].audio + " {"+currentId+"}modulo " + stack[stackIndex - 1].audio+" ";
+        stack[stackIndex-2].pf = stack[stackIndex-2].pf.concat(stack[stackIndex-1].pf);
+		stack[stackIndex-2].pf.push(op);
+		stack[stackIndex - 2].op = op;
+		stack[stackIndex - 2].lci = currentId;
+        stackIndex--;
+    }
+	currentId++;
+    return [stack, stackIndex,currentId];
+}
+toAudioOp['_'] = function(stack, stackIndex, op,currentId) {
+
+
+	stack[stackIndex - 2].katex = stack[stackIndex - 2].katex + "\\htmlId{id-"+currentId+"}{_{" + stack[stackIndex - 1].katex+"}}";
+	stack[stackIndex - 2].audio = stack[stackIndex - 2].audio + " {"+currentId+"}sub " + stack[stackIndex - 1].audio+" ";
+	stack[stackIndex-2].pf = stack[stackIndex-2].pf.concat(stack[stackIndex-1].pf);
+	stack[stackIndex-2].pf.push(op);
+	stack[stackIndex - 2].op = op;
+	stack[stackIndex - 2].lci = currentId;
+	stackIndex--;
+	currentId++;
+
+    return [stack, stackIndex,currentId];
+}
+
+toAudioOp['perm'] = function(stack, stackIndex, op,currentId) {
+    if (stack[stackIndex - 1].op == ",") {
+        stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\mathrm{perm}(" + stack[stackIndex - 1].katex.replace(/,/g, ", ") + ")}";
+        stack[stackIndex - 1].audio = " " + stack[stackIndex - 1].audio.replace(/,/g, " {"+currentId+"}permutation ") + " ";
+        stack[stackIndex - 1].op = op;
+		stack[stackIndex-1].pf.push(op);
+		stack[stackIndex - 1].lci = currentId;
+    }
+	else {
+        stack[stackIndex - 2].katex = "\\htmlId{id-"+currentId+"}{\\mathrm{perm}(" + stack[stackIndex - 2].katex + ", " + stack[stackIndex - 1].katex + ")}";
+		stack[stackIndex - 2].audio = stack[stackIndex - 2].audio + " {"+currentId+"}permutation " + stack[stackIndex - 1].audio+" ";
+		stack[stackIndex-2].pf = stack[stackIndex-2].pf.concat(stack[stackIndex-1].pf);
+		stack[stackIndex-2].pf.push(op);
+		stack[stackIndex - 2].op = op;
+		stack[stackIndex - 2].lci = currentId;
+		stackIndex--;
+    }
+	currentId++;
+    return [stack, stackIndex,currentId];
+}
+toAudioOp['comb'] = function(stack, stackIndex, op,currentId) {
+    if (stack[stackIndex - 1].op == ",") {
+        var split = stack[stackIndex - 1].katex.split(",");
+		var splita = stack[stackIndex - 1].audio.split(",");
+        if (split.length == 2) {
+            stack[stackIndex - 1].katex = "{" + split[0] + "\\choose " + split[1] + "}";
+			stack[stackIndex - 1].audio = " " + splita[0] + " choose " + splita[1] + " ";
+            stack[stackIndex - 1].op = op;
+			stack[stackIndex-1].pf.push(op);
+			stack[stackIndex - 1].lci = currentId;
+        }
+		else {
+            stack[stackIndex - 1].katex = "\\mathrm{comb}(" + stack[stackIndex - 1].katex.replace(/,/g, ", ") + ")";
+            stack[stackIndex - 1].audio = " " + stack[stackIndex - 1].audio.replace(/,/g, " choose ") + " ";
+			stack[stackIndex - 1].op = op;
+			stack[stackIndex-1].pf.push(op);
+			stack[stackIndex - 1].lci = currentId;
+        }
+    }
+	else {
+		
+        stack[stackIndex - 2].katex = "{" + stack[stackIndex - 2].katex + "\\choose " + stack[stackIndex - 1].katex + "}";
+		stack[stackIndex - 2].audio = " " + stack[stackIndex - 2].audio + " choose " + stack[stackIndex - 1].audio + " ";
+		stack[stackIndex-2].pf = stack[stackIndex-2].pf.concat(stack[stackIndex-1].pf);
+		stack[stackIndex-2].pf.push(op);
+		stack[stackIndex - 2].op = op;
+		stack[stackIndex - 2].lci = currentId;
+		stackIndex--;
+    }
+    return [stack, stackIndex,currentId];
+}
 
 var toAudioExp = {};
 
