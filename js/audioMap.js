@@ -70,6 +70,7 @@ toAudioOp["+"] = function(stack, stackIndex, op, currentId){
 	return [stack, stackIndex,currentId];
 }
 toAudioOp["-"] = function(stack, stackIndex, op, currentId){
+	console.log(currentId);
 	stack[stackIndex-2].audio = stack[stackIndex - 2].audio+" {"+currentId+"}minus "+stack[stackIndex - 1].audio+" ";
 	var lastPrec = prec[stack[stackIndex - 2].op];
 	if (lastPrec && lastPrec < prec[op]){
@@ -276,6 +277,162 @@ for (var i = 0; i < logfns.length; i++) {
 		return [stack, stackIndex,currentId];
     }
 }
+var compsAudio = {};
+compsAudio['∈'] = " is in ";
+compsAudio['∉'] = " is not in ";
+compsAudio['≠'] = " is not equal to ";
+compsAudio['≠='] = " is not equal to ";
+compsAudio['≤'] = " is less than or equal to ";
+compsAudio['≥'] = " is greater than or equal to ";
+compsAudio['±'] = " plus or minus ";
+compsAudio['='] = " equals ";
+compsAudio['=='] = " equals ";
+compsAudio['==='] = " equals ";
+comps['=='] = " = ";
+comps['==='] = " = ";
+comps['≠='] = "\\neq ";
+for (var i in comps) {
+    toAudioOp[i] = function(stack, stackIndex, op, currentId) {
+        var lastPrec = prec[stack[stackIndex - 2].op];
+		
+        if (lastPrec && lastPrec < prec[op]) {
+            stack[stackIndex - 2].katex = "\\htmlId{id-"+stack[stackIndex - 2].lci+"}{\\left(" + stack[stackIndex - 2].katex + "\\right)}\\htmlId{id-"+currentId+"}{" + comps[op]+"}";
+        } else {
+            stack[stackIndex - 2].katex = stack[stackIndex - 2].katex + "\\htmlId{id-"+currentId+"}{" + comps[op]+"}";
+        }
+        lastPrec = prec[stack[stackIndex - 1].op];
+        if (lastPrec && lastPrec < prec[op]) {
+            stack[stackIndex - 2].katex  += "\\htmlId{id-"+stack[stackIndex - 1].lci+"}{\\left(" + stack[stackIndex - 1].katex  + "\\right)}";
+        } else {
+            stack[stackIndex - 2].katex  += stack[stackIndex - 1].katex ;
+        }
+
+		stack[stackIndex - 2].audio = stack[stackIndex - 2].audio + " {"+currentId+"}"+compsAudio[op];
+		stack[stackIndex - 2].audio += stack[stackIndex - 1].audio + " ";
+
+        stack[stackIndex-2].pf = stack[stackIndex-2].pf.concat(stack[stackIndex-1].pf);
+    	stack[stackIndex-2].pf.push(op);
+    	stack[stackIndex - 2].op = op;
+		stack[stackIndex - 2].lci = currentId;
+		stackIndex--;
+    	currentId++;
+        return [stack, stackIndex, currentIndex];
+    }
+}
+var trig = ['sin', 'cos', 'tan', 'csc', 'sec', 'cot', 'sinh', 'cosh', 'tanh'];
+var trigAudio = {};
+trigAudio['sin']="sine";
+trigAudio['cos']="cosine";
+trigAudio['tan']="tangent";
+trigAudio['csc']="cosecant";
+trigAudio['sec']="secant";
+trigAudio['cot']="cotangent";
+trigAudio['sinh']="hyperbolic sine";
+trigAudio['cosh']="hyperbolic cosine";
+trigAudio['tanh']="hyberbolic tangent";
+for (var i = 0; i < trig.length; i++) {
+    toAudioOp[trig[i]] = function(stack, stackIndex, op,currentId) {
+        var lastPrec = prec[stack[stackIndex - 1].op];
+        if (stack[stackIndex - 1].op == "#") {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + "{" + stack[stackIndex - 1].katex + "}}";
+        } else {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op + "\\left(" + stack[stackIndex - 1].katex + "\\right)}";
+        }
+		stack[stackIndex - 1].audio = " {"+currentId+"}" + trigAudio[op] + " of " + stack[stackIndex - 1].audio + " ";
+        
+    	stack[stackIndex-1].pf.push(op);
+    	stack[stackIndex - 1].op = op;
+		stack[stackIndex - 1].lci = currentId;
+    	currentId++;
+        return [stack, stackIndex,currentId];
+    }
+}
+var arctrig = ['arcsin', 'arccos', 'arctan', 'arcsinh', 'arccosh', 'arctanh', 'atan2'];
+var arctrigAudio = {};
+arctrigAudio['arcsin']="arcsine";
+arctrigAudio['arccos']="arccosine";
+arctrigAudio['arctan']="arctangent";
+arctrigAudio['arcsinh']="hyperbolic arcsine";
+arctrigAudio['arccosh']="hyperbolic arccosine";
+arctrigAudio['arctanh']="hyberbolic arctangent";
+arctrigAudio['atan2']="arctan two";
+for (var i = 0; i < arctrig.length; i++) {
+    toAudioOp[arctrig[i]] = function(stack, stackIndex, op,currentId) {
+        if (stack[stackIndex - 1].op == "#") {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op.replace('arc','a') + "{" + stack[stackIndex - 1].katex + "}}";
+        } else {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\" + op.replace('arc','a') + "\\left(" + stack[stackIndex - 1].katex + "\\right)}";
+        }
+		stack[stackIndex - 1].audio = " {"+currentId+"}" + arctrigAudio[op] + " of " + stack[stackIndex - 1].audio + " ";
+        
+    	stack[stackIndex-1].pf.push(op);
+    	stack[stackIndex - 1].op = op;
+		stack[stackIndex - 1].lci = currentId;
+    	currentId++;
+        return [stack, stackIndex,currentId];
+    }
+}
+toAudioOp['der'] = function(stack, stackIndex, op,currentId) {
+    var lastPrec = prec[stack[stackIndex - 1].op];
+    if (stack[stackIndex - 1].op == ",") {
+        var split = stack[stackIndex - 1].katex.split(",");
+		var splita = stack[stackIndex - 1].audio.split(",");
+		if (split.length == 2 && splita.length == 2){
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\frac{\\mathrm{d}}{\\mathrm{d}" + split[1] + "}[" + split[0] + "]}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the derivative with respect to " + splita[1] + " of " + splita[0] + " ";
+		}
+		else {
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\frac{\\mathrm{d}}{\\mathrm{d}x}[" + stack[stackIndex - 1].katex + "]}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the derivative with respect to x of " + stack[stackIndex - 1].audio + " ";
+		}
+    } else {
+		stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\frac{\\mathrm{d}}{\\mathrm{d}x}[" + stack[stackIndex - 1].katex + "]}";
+		stack[stackIndex - 1].audio = " {"+currentId+"}the derivative with respect to x of " + stack[stackIndex - 1].audio + " ";
+    }
+    stack[stackIndex - 1].op = op;
+	stack[stackIndex-1].pf.push(op);
+	stack[stackIndex - 1].lci = currentId;
+    currentId++;
+    return [stack, stackIndex,currentId];
+}
+toAudioOp['int'] = function(stack, stackIndex, op,currentId) {
+    var lastPrec = prec[stack[stackIndex - 1].op];
+    if (stack[stackIndex - 1].op == ",") {
+        var split = stack[stackIndex - 1].katex.split(",");
+		var splita = stack[stackIndex - 1].audio.split(",");
+        if (split.length == 4) {
+            stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\int_{" + split[2] + "}^{" + split[3] + "} \\!{" + split[0] + "} \\, \\mathrm{d}{" + split[1] + "}}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the integral from " + splita[2] + " to " + splita[3] + " of " + splita[0] + " with respect to " + splita[1] + " ";
+        }
+		else if (split.length == 3) {
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\int_{" + split[2] + "}^{" + split[3] + "} \\!{" + split[0] + "} \\, \\mathrm{d}x}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the integral from " + splita[2] + " to " + splita[3] + " of " + splita[0] + " with respect to x ";
+
+        }
+		else if (split.length == 2) {
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\int \\!{" + split[0] + "} \\, \\mathrm{d}{" + split[1] + "}}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the integral of " + splita[0] + " with respect to " + splita[1] + " ";
+
+        }
+		else {
+			stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\int \\!{" + stack[stackIndex - 1].katex + "} \\, \\mathrm{d}x}";
+			stack[stackIndex - 1].audio = " {"+currentId+"}the integral of " + stack[stackIndex - 1].audio + " with respect to x ";
+
+        }
+    }
+	else {
+        stack[stackIndex - 1].katex = "\\htmlId{id-"+currentId+"}{\\int \\!{" + stack[stackIndex - 1].katex + "} \\, \\mathrm{d}x}";
+		stack[stackIndex - 1].audio = " {"+currentId+"}the integral of " + stack[stackIndex - 1].audio + " with respect to x ";
+
+    }
+    stack[stackIndex - 1].op = op;
+	stack[stackIndex-1].pf.push(op);
+	stack[stackIndex - 1].lci = currentId;
+    currentId++;
+    return [stack, stackIndex,currentId];
+}
+
+
 var toAudioExp = {};
 
 
