@@ -28,30 +28,30 @@ const run = async (input,socket) => {
 	var params = {
 		OutputFormat: "mp3",
 		OutputS3BucketName: "math-audio",
-		Text: input,
-		TextType: "text",
-		VoiceId: "Matthew",
-		SampleRate: "22050",
+		Text: ""+input.text,
+		TextType: "ssml",
+		VoiceId: input.voice,
+		SampleRate: "24000",
 		Engine: "neural"
   	};
 	var paramsMarks = {
 		OutputFormat: "json",
 		OutputS3BucketName: "math-audio",
-		Text: input,
-		TextType: "text",
-		VoiceId: "Matthew",
-		SampleRate: "22050",
+		Text: input.text,
+		TextType: "ssml",
+		VoiceId: input.voice,
+		SampleRate: "24000",
 		Engine: "neural",
 		SpeechMarkTypes: ["word"]
 	};
   	try {
 		var bothDone = 0;
-		var jsonMessage = {};
+		var jsonMessage = {offset:input.offset,filename:input.filename};
 		var result = await pollyClient.send(new SynthesizeSpeechCommand(params));
 		//console.log("Success, audio file added to " + params.OutputS3BucketName);
 		//var id = result.SynthesisTask.TaskId;
 		//console.log(id);
-		var ws = fs.createWriteStream('./audio/output2.mp3');
+		var ws = fs.createWriteStream('./audio/'+input.filename+'.mp3');
 		result.AudioStream.pipe(ws);
 		ws.on('finish', function() {
 			bothDone++;
@@ -71,7 +71,7 @@ const run = async (input,socket) => {
 		readable.on('end', function() {
 			timings = timings.trim()+"]";
 			var jsonOut = timings.replace(/\n+/g,",");
-			jsonMessage = {'name':'output2',timings:JSON.parse(jsonOut)};
+			jsonMessage['timings'] = JSON.parse(jsonOut);
 			bothDone++;
 			if (bothDone > 1){
 				socket.emit('done',jsonMessage);

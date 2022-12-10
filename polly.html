@@ -10,6 +10,15 @@
 
 <body>
 <div id="textToSynth">
+	<select name="voice">
+		<option value="Matthew" selected>Matthew</option>
+	</select>
+	<select name="speed">
+		<option value="x-slow">x-slow</option>
+		<option value="slow">slow</option>
+		<option value="medium">medium</option>
+		<option value="fast">fast</option>
+	</select>
     <input autofocus size="23" type="text" id="textEntry" value="1+2+3*51-4^2"/>
     <button class="btn default" onClick="mathToAudio()">Synthesize</button>
     <div id="result"></div>

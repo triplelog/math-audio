@@ -92,6 +92,7 @@ var timings = [
         "value": "2"
     }
 ];
+var offset = 0;
 var idMap = {};
 var idTimings = {};
 var audioEl = document.getElementById('audioPlayback');
@@ -136,7 +137,13 @@ function mathToAudio(){
             els.forEach((el) => {el.style.color = "#EEE"});
         }
     }
-	socket.emit('toAudio',audio);
+    var startStr = "<speak><prosody rate='"+document.querySelector('select[name=speed]').value+"'>";
+    var voice = document.querySelector('select[name=voice]').value;
+    var filename = "output";
+    for (var i=0;i<10;i++){
+        filename+=Math.floor(Math.random()*10);
+    }
+	socket.emit('toAudio',{text:startStr+audio+"</prosody></speak>",voice:voice,offset:startStr.length,filename:filename});
     /*var audio = document.getElementById('audioSource');
     audio.src = "audio/output2.mp3";
     audioEl.load();*/
@@ -167,11 +174,12 @@ function playKatex(){
         if (els){
             els.forEach((el) => {el.style.color = "#EEE"});
         }
+        var loc = idMap[id]+offset;
         for (var i=timings.length-1;i>=0;i--){
-            if (idMap[id] >= timings[i].start){
+            if (loc >= timings[i].start){
                 var pctDone = 0;
-                if ((idMap[id] > timings[i].start) && (timings[i].end > timings[i].start)){
-                    pctDone = (idMap[id] - timings[i].start)/(timings[i].end - timings[i].start);
+                if ((loc > timings[i].start) && (timings[i].end > timings[i].start)){
+                    pctDone = (loc - timings[i].start)/(timings[i].end - timings[i].start);
                 }
                 var nextTime = timings[i].time;
                 if (i < timings.length-1){
@@ -182,6 +190,7 @@ function playKatex(){
             }
         }
     }
+    console.log(JSON.stringify(idTimings));
     audioEl.play();
 }
 
@@ -191,9 +200,10 @@ socket.on('connect', (msg) => {
 socket.on('done', (msg) => {
 	console.log(msg);
     var audio = document.getElementById('audioSource');
-    audio.src = "audio/"+msg.name+".mp3";
+    audio.src = "audio/"+msg.filename+".mp3";
     document.getElementById('audioPlayback').load();
     timings = msg.timings;
+    offset = msg.offset;
 });
 
 function toAudio(postfixList) {
